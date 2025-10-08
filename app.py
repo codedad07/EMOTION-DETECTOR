@@ -2,8 +2,10 @@ import streamlit as st
 import cv2
 import numpy as np
 import pickle
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
-from utils import get_face_info # Use the function that provides the bounding box
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, RTCConfiguration
+
+# Import your existing utility function
+from utils import get_face_info
 
 # --- Page Configuration ---
 st.set_page_config(page_title="EMOTION DETECTOR", page_icon="😊", layout="centered")
@@ -27,6 +29,13 @@ def load_model_and_scaler():
 # Load the resources
 model, scaler = load_model_and_scaler()
 
+# --- NEW: RTC Configuration for Deployment ---
+# This helps with network traversal issues on different networks by providing a STUN server.
+RTC_CONFIGURATION = RTCConfiguration(
+    {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+)
+# -------------------------------------------
+
 # --- Video Processing Class ---
 class EmotionTransformer(VideoTransformerBase):
     def __init__(self):
@@ -39,29 +48,17 @@ class EmotionTransformer(VideoTransformerBase):
         
         face_landmarks, bbox = get_face_info(img)
 
-        if face_landmarks and self.model is not None:
-            # Draw bounding box
+        if face_landmarks and self.model is not None and bbox:
             x, y, w, h = bbox
             cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
-            # Predict emotion
             landmarks_np = np.array(face_landmarks).reshape(1, -1)
             landmarks_scaled = self.scaler.transform(landmarks_np)
             prediction = self.model.predict(landmarks_scaled)
             predicted_emotion = EMOTIONS[int(prediction[0])]
 
-            # Display emotion text
             cv2.putText(img, predicted_emotion, (x, y - 10), 
                         cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2, cv2.LINE_AA)
-        else:
-            # Display instructional message
-            line1 = "Please position your face"
-            line2 = "in front of the camera"
-            (text_width, text_height), _ = cv2.getTextSize(line1, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
-            center_x = (img.shape[1] - text_width) // 2
-            center_y = img.shape[0] // 2
-            cv2.putText(img, line1, (center_x, center_y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-            cv2.putText(img, line2, (center_x - 20, center_y + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             
         return img
 
@@ -73,17 +70,17 @@ st.write("Press 'START' to begin and grant camera permissions.")
 if model is None or scaler is None:
     st.warning("Model resources could not be loaded. The application cannot proceed.")
 else:
-    # The main component that handles the webcam stream
+    # Pass the new RTC configuration to the streamer component
     webrtc_streamer(
         key="emotion_detector",
         video_processor_factory=EmotionTransformer,
         media_stream_constraints={"video": True, "audio": False},
         async_processing=True,
+        rtc_configuration=RTC_CONFIGURATION 
     )
-    st.info("The model is running. Press 'STOP' to end the stream.")
 
-# --- NEW FEATURE PLACEHOLDER ---
+st.info("The model is running. Press 'STOP' to end the stream.")
+
 st.subheader("🎤 Voice Emotion Detection")
 st.info("This feature is still under development.")
-# -----------------------------
 
