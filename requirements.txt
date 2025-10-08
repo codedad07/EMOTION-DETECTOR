@@ -1,3 +1,5 @@
+python_version == "3.10"
+
 streamlit==1.30.0
 streamlit-webrtc==0.47.0
 opencv-python-headless==4.8.0.76
