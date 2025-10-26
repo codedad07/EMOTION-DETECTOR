@@ -45,6 +45,8 @@ class EmotionTransformer(VideoTransformerBase):
     def transform(self, frame):
         """Processes each frame from the webcam."""
         img = frame.to_ndarray(format="bgr24")
+
+        img = cv2.flip(img, 1)
         
         face_landmarks, bbox = get_face_info(img)
 
@@ -63,9 +65,18 @@ class EmotionTransformer(VideoTransformerBase):
         return img
 
 # --- Streamlit App Interface ---
+
+
 st.title("Live Emotion Detector 😊")
+st.subheader("😲 Face Emotion Detection")
 st.write("This app uses your webcam to analyze facial expressions in real-time.")
+st.write("Note : ")
+st.write("1. Ensure your face is well-lit and clearly visible to the camera.")
+st.write("2. For best results, position yourself directly in front of the camera.")
+st.write("3. Minimize background distractions and noise.")
 st.write("Press 'START' to begin and grant camera permissions.")
+
+
 
 if model is None or scaler is None:
     st.warning("Model resources could not be loaded. The application cannot proceed.")
@@ -83,4 +94,3 @@ st.info("The model is running. Press 'STOP' to end the stream.")
 
 st.subheader("🎤 Voice Emotion Detection")
 st.info("This feature is still under development.")
-
